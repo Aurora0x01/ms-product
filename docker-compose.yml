@@ -14,12 +14,14 @@ services:
     image: mysql:8.3.0
     container_name: mysql
     environment:
-      MYSQL_ROOT_PASSWORD: mysql
+      MYSQL_ROOT_PASSWORD: ""  # Empty password
+      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
     ports:
-      - "3306:3306"
+      - "3307:3306"  # FIXED: Host port 3307 -> Container port 3306
     volumes:
       - ./data/mysql:/var/lib/mysql
       - ./docker/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
+
   zookeeper:
     image: confluentinc/cp-zookeeper:7.5.0
     hostname: zookeeper
@@ -79,13 +81,14 @@ services:
       MYSQL_DATABASE: keycloak
       MYSQL_USER: keycloak
       MYSQL_PASSWORD: password
+
   keycloak:
     container_name: keycloak
     image: quay.io/keycloak/keycloak:24.0.1
     command: [ "start-dev", "--import-realm" ]
     environment:
-      DB_VENDOR: MYSQL
-      DB_ADDR: mysql
+      DB_Vendor: MYSQL
+      DB_ADDR: keycloak-mysql  # FIXED: Connect to keycloak-mysql container
       DB_DATABASE: keycloak
       DB_USER: keycloak
       DB_PASSWORD: password
@@ -134,3 +137,95 @@ services:
       - GF_AUTH_DISABLE_LOGIN_FORM=true
     ports:
       - "3000:3000"
+
+  discovery-service:
+    image: aurora0x01/discovery-service:latest
+    container_name: discovery-service
+    ports:
+      - "8761:8761"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+    networks:
+      - microservices-network
+    depends_on:
+      - mongodb
+      - mysql
+
+  api-gateway:
+    image: aurora0x01/api-gateway:latest
+    container_name: api-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-service:8761/eureka
+      - SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER-URI=http://keycloak:8080/realms/your-realm
+    depends_on:
+      - discovery-service
+      - keycloak
+    networks:
+      - microservices-network
+
+  product-service:
+    image: aurora0x01/product-service:latest
+    container_name: product-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-service:8761/eureka
+      - SPRING_DATA_MONGODB_URI=mongodb://root:password@mongodb:27017/product-service?authSource=admin
+      - SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER-URI=http://keycloak:8080/realms/your-realm
+    depends_on:
+      - discovery-service
+      - mongodb
+      - keycloak
+    networks:
+      - microservices-network
+
+  order-service:
+    image: aurora0x01/order-service:latest
+    container_name: order-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-service:8761/eureka
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/order-service
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=mysql
+      - KAFKA_BOOTSTRAP-SERVERS=broker:29092
+    depends_on:
+      - discovery-service
+      - mysql
+      - broker
+    networks:
+      - microservices-network
+
+  inventory-service:
+    image: aurora0x01/inventory-service:latest
+    container_name: inventory-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-service:8761/eureka
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/inventory_service?createDatabaseIfNotExist=true
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=
+    depends_on:
+      - discovery-service
+      - mysql  # Ensure MySQL dependency
+    networks:
+      - microservices-network
+
+  notification-service:
+    image: aurora0x01/notification-service:latest
+    container_name: notification-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-service:8761/eureka
+      - KAFKA_BOOTSTRAP-SERVERS=broker:29092
+    depends_on:
+      - discovery-service
+      - broker
+    networks:
+      - microservices-network
+
+networks:
+  microservices-network:
+    driver: bridge
