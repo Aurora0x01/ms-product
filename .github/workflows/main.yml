@@ -2,7 +2,7 @@ name: Build and Push Microservices to Docker Hub
 
 on:
   push:
-    branches: [ main ]
+    branches: [ Main ]
   workflow_dispatch:
 
 env:
