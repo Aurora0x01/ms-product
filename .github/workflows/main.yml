@@ -52,25 +52,21 @@ jobs:
           docker push ${{ secrets.DOCKER_USERNAME }}/discovery-service:latest
 
       - name: Build and Push Product Service
-        working-directory: product-service
         run: |
-          docker build -t $DOCKER_USERNAME/product-service:latest .
-          docker push $DOCKER_USERNAME/product-service:latest
+          docker build -t ${{ secrets.DOCKER_USERNAME }}/product-service:latest ./product-service
+          docker push ${{ secrets.DOCKER_USERNAME }}/product-service:latest
 
       - name: Build and Push Order Service
-        working-directory: order-service
         run: |
-          docker build -t $DOCKER_USERNAME/order-service:latest .
-          docker push $DOCKER_USERNAME/order-service:latest
+          docker build -t ${{ secrets.DOCKER_USERNAME }}/order-service:latest ./order-service
+          docker push ${{ secrets.DOCKER_USERNAME }}/order-service:latest
 
       - name: Build and Push Inventory Service
-        working-directory: inventory-service
         run: |
-          docker build -t $DOCKER_USERNAME/inventory-service:latest .
-          docker push $DOCKER_USERNAME/inventory-service:latest
+          docker build -t ${{ secrets.DOCKER_USERNAME }}/inventory-service:latest ./inventory-service
+          docker push ${{ secrets.DOCKER_USERNAME }}/inventory-service:latest
 
       - name: Build and Push Notification Service
-        working-directory: notification-service
         run: |
-          docker build -t $DOCKER_USERNAME/notification-service:latest .
-          docker push $DOCKER_USERNAME/notification-service:latest
+          docker build -t ${{ secrets.DOCKER_USERNAME }}/notification-service:latest ./notification-service
+          docker push ${{ secrets.DOCKER_USERNAME }}/notification-service:latest
