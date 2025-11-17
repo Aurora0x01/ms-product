@@ -12,6 +12,7 @@ Ce dépôt contient le code source complet du projet **Spring Boot 3 Microservic
 * `discovery-service` (Eureka)
 
 ---
+nice
 
 ## Technologies utilisées
 
